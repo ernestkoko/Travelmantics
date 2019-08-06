@@ -40,7 +40,7 @@ public class DealActivity extends AppCompatActivity {
     EditText txtPrice;
     ImageView imageView;
     TravelDeal deal;
-    private StorageReference mRef;
+    StorageReference ref;
 
 
     @Override
@@ -123,43 +123,22 @@ public class DealActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICTURE_RESULT && resultCode == RESULT_OK) {
             Uri imageUri = data.getData();
-            mRef = FirebaseUtil.mStorageRef.child(imageUri.getLastPathSegment());
-            mRef.putFile(imageUri);
-            UploadTask uploadTask = mRef.putFile(imageUri);
-            Task<Uri> urlTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+            ref = FirebaseUtil.mStorageRef.child(imageUri.getLastPathSegment());
+           ref .putFile(imageUri).addOnSuccessListener( this,new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
-                public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                    if(!task.isSuccessful()) {
-                        throw task.getException();
-                    }
-                    return mRef.getDownloadUrl();
-                }
-            }).addOnCompleteListener(this, new OnCompleteListener<Uri>() {
-                @Override
-                public void onComplete(@NonNull Task<Uri> task) {
-                    if(task.isSuccessful()) {
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                   ref.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                        @Override
+                        public void onSuccess(Uri uri) {
+                            deal.setImageUrl(uri.toString());
+                            showImage(deal.getImageUrl());
+                        }
+                    });
 
-                        Uri downloadUri = task.getResult();
-                        String url = downloadUri.toString();
-                        String pictureName = task.getResult().getPath();
-                        deal.setImageUrl(url);
-
-                        deal.setImageName(pictureName);
-                        Log.d("Url: ", url);
-                        Log.d("Name", pictureName);
-
-                        showImage(url);
-                    }
+                    deal.setImageName(taskSnapshot.getStorage().getPath());
                 }
             });
-//            ref.putFile(imageUri).addOnSuccessListener(this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
-//                @Override
-//                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-//                    String url = taskSnapshot.getStorage().getDownloadUrl().toString();
-//                    deal.setImageUrl(url);
-//                    showImage(url);
-//                }
-//            });
+
         }
     }
 
@@ -167,7 +146,7 @@ public class DealActivity extends AppCompatActivity {
         deal.setTitle(txtTitle.getText().toString());
         deal.setDescription(txtDescription.getText().toString());
         deal.setPrice(txtPrice.getText().toString());
-        deal.setImageUrl("");
+
         if (deal.getId() == null) {
             mDatabaseReference.push().setValue(deal);
         }
